@@ -28,19 +28,27 @@ function useMoodEntries(): MoodEntry[] {
   return entries;
 }
 
+/**
+ * Calculates the current streak of consecutive days with mood entries.
+ * Assumes `entries` are sorted in descending order by date (newest first).
+ */
 function calculateStreak(entries: MoodEntry[]): number {
   let streak = 0;
   const today = new Date();
-  for (let i = 0; i < 365; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
-    if (entries.some((e) => e.date === dateStr)) {
+
+  for (const entry of entries) {
+    const expectedDate = new Date(today);
+    expectedDate.setDate(today.getDate() - streak);
+    const expectedStr = expectedDate.toISOString().split("T")[0];
+
+    if (entry.date === expectedStr) {
       streak++;
     } else {
+      // Stop at the first gap in consecutive days
       break;
     }
   }
+
   return streak;
 }
 

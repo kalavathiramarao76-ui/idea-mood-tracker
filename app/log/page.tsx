@@ -49,27 +49,50 @@ export default function LogPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-lg mx-auto">
-        <Link href="/" className="text-indigo-600 hover:underline text-sm">&larr; Home</Link>
+        <Link href="/" className="text-indigo-600 hover:underline text-sm">
+          &larr; Home
+        </Link>
         <h1 className="text-3xl font-bold mt-4 mb-6">Log Your Mood</h1>
         <p className="text-gray-500 mb-4">How are you feeling today? ({today})</p>
 
-        <div className="flex gap-3 justify-center mb-6">
-          {MOODS.map((mood, i) => (
-            <button key={mood.emoji} onClick={() => setSelected(i)}
-              className={`text-4xl p-3 rounded-xl transition ${selected === i ? 'bg-indigo-100 ring-2 ring-indigo-500 scale-110' : 'bg-white hover:bg-gray-100'}`}>
-              {mood.emoji}
-              <div className="text-xs text-gray-500 mt-1">{mood.label}</div>
-            </button>
-          ))}
-        </div>
+        <fieldset className="mb-6">
+          <legend className="sr-only">Select your mood</legend>
+          <div className="flex gap-3 justify-center">
+            {MOODS.map((mood, i) => (
+              <button
+                key={mood.emoji}
+                type="button"
+                onClick={() => setSelected(i)}
+                aria-label={mood.label}
+                className={`text-4xl p-3 rounded-xl transition ${
+                  selected === i ? 'bg-indigo-100 ring-2 ring-indigo-500 scale-110' : 'bg-white hover:bg-gray-100'
+                }`}
+              >
+                {mood.emoji}
+                <div className="text-xs text-gray-500 mt-1">{mood.label}</div>
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-        <textarea value={note} onChange={e => setNote(e.target.value)}
-          placeholder="Add a note (optional)..."
-          className="w-full p-3 border border-gray-200 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          rows={3} />
+        <label className="block mb-4">
+          <span className="sr-only">Note (optional)</span>
+          <textarea
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Add a note (optional)..."
+            className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            rows={3}
+          />
+        </label>
 
-        <button type="button" onClick={handleSave} disabled={selected === null}
-          className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={selected === null}
+          aria-disabled={selected === null}
+          className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
           {todayEntry ? 'Update Mood' : 'Save Mood'}
         </button>
 
