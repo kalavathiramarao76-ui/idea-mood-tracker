@@ -105,7 +105,11 @@ export default function LogPage() {
         <p id="note-help" className="text-sm text-gray-500 mb-1">
           Optional note (max {NOTE_MAX_LENGTH} characters)
         </p>
-        <p id="note-count" className="text-sm text-gray-500 text-right mb-4">
+        <p
+          id="note-count"
+          className="text-sm text-gray-500 text-right mb-4"
+          aria-live="polite"
+        >
           {note.length}/{NOTE_MAX_LENGTH}
         </p>
 

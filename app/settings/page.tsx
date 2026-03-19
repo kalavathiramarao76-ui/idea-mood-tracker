@@ -88,28 +88,39 @@ export default function SettingsPage() {
   }, [showClearModal, handleKeyDown]);
 
   const exportCSV = () => {
-    const entries: MoodEntry[] = JSON.parse(
-      localStorage.getItem("mood-entries") || "[]"
-    );
-    const csv =
-      "Date,Emoji,Label,Value,Note\n" +
-      entries
-        .map(
-          (e) =>
-            `${e.date},${e.emoji},${e.label},${e.value},"${(
-              e.note || ""
-            ).replace(/"/g, '""')}"`
-        )
-        .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "mood-tracker-export.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    setExportDone(true);
-    setTimeout(() => setExportDone(false), 2000);
+    try {
+      const entries: MoodEntry[] = JSON.parse(
+        localStorage.getItem("mood-entries") || "[]"
+      );
+
+      const csvHeader = "Date,Emoji,Label,Value,Note";
+      const csvRows = entries.map((e) => {
+        const safeNote = (e.note || "").replace(/"/g, '""');
+        return `${e.date},${e.emoji},${e.label},${e.value},"${safeNote}"`;
+      });
+      const csvContent = [csvHeader, ...csvRows].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "mood-tracker-export.csv";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up after a short delay to ensure the download has started
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+    } finally {
+      setExportDone(true);
+      setTimeout(() => setExportDone(false), 2000);
+    }
   };
 
   const handleClearConfirm = () => {
