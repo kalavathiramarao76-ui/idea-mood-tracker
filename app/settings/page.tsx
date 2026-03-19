@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 
-type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
+type MoodEntry = {
+  emoji: string;
+  label: string;
+  value: number;
+  note: string;
+  date: string;
+};
 
 export default function SettingsPage() {
   const [entryCount, setEntryCount] = useState(0);
@@ -11,26 +17,95 @@ export default function SettingsPage() {
   const [clearDone, setClearDone] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
 
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Load entry count on mount
   useEffect(() => {
-    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const entries: MoodEntry[] = JSON.parse(
+      localStorage.getItem("mood-entries") || "[]"
+    );
     setEntryCount(entries.length);
   }, []);
 
+  // Focus trap & Escape handling for modal
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!showClearModal) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setShowClearModal(false);
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const focusableElements = [
+          cancelBtnRef.current,
+          confirmBtnRef.current,
+        ].filter(Boolean) as HTMLElement[];
+
+        if (focusableElements.length === 0) return;
+
+        const firstEl = focusableElements[0];
+        const lastEl = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
+    },
+    [showClearModal]
+  );
+
+  useEffect(() => {
+    if (showClearModal) {
+      // Focus the cancel button when modal opens
+      cancelBtnRef.current?.focus();
+      document.addEventListener("keydown", handleKeyDown);
+      // Prevent background scrolling
+      document.body.style.overflow = "hidden";
+    } else {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [showClearModal, handleKeyDown]);
+
   const exportCSV = () => {
-    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const entries: MoodEntry[] = JSON.parse(
+      localStorage.getItem("mood-entries") || "[]"
+    );
     const csv =
-      'Date,Emoji,Label,Value,Note\n' +
+      "Date,Emoji,Label,Value,Note\n" +
       entries
         .map(
           (e) =>
-            `${e.date},${e.emoji},${e.label},${e.value},"${(e.note || '').replace(/"/g, '""')}"`
+            `${e.date},${e.emoji},${e.label},${e.value},"${(
+              e.note || ""
+            ).replace(/"/g, '""')}"`
         )
-        .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+        .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'mood-tracker-export.csv';
+    a.download = "mood-tracker-export.csv";
     a.click();
     URL.revokeObjectURL(url);
     setExportDone(true);
@@ -38,7 +113,7 @@ export default function SettingsPage() {
   };
 
   const handleClearConfirm = () => {
-    localStorage.removeItem('mood-entries');
+    localStorage.removeItem("mood-entries");
     setEntryCount(0);
     setClearDone(true);
     setTimeout(() => setClearDone(false), 2000);
@@ -78,7 +153,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="bg-white p-5 rounded-xl shadow-sm border border-red-100">
-            <h2 className="font-semibold text-lg mb-2 text-red-600">Danger Zone</h2>
+            <h2 className="font-semibold text-lg mb-2 text-red-600">
+              Danger Zone
+            </h2>
             <p className="text-gray-500 text-sm mb-3">
               Permanently delete all your mood data.
             </p>
@@ -96,22 +173,37 @@ export default function SettingsPage() {
       </div>
 
       {showClearModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="clear-modal-title"
+          aria-describedby="clear-modal-desc"
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6"
+          >
+            <h3
+              id="clear-modal-title"
+              className="text-lg font-medium text-gray-900 mb-4"
+            >
               Confirm Deletion
             </h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to permanently delete all your mood entries? This action cannot be undone.
+            <p id="clear-modal-desc" className="text-gray-600 mb-6">
+              Are you sure you want to permanently delete all your mood entries?
+              This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-3">
               <button
+                ref={cancelBtnRef}
                 onClick={() => setShowClearModal(false)}
                 className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
               >
                 Cancel
               </button>
               <button
+                ref={confirmBtnRef}
                 onClick={handleClearConfirm}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >

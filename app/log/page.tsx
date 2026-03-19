@@ -11,7 +11,15 @@ const MOODS = [
   { emoji: '😢', label: 'Bad', value: 1 },
 ];
 
-type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
+type MoodEntry = {
+  emoji: string;
+  label: string;
+  value: number;
+  note: string;
+  date: string;
+};
+
+const NOTE_MAX_LENGTH = 200;
 
 export default function LogPage() {
   const [selected, setSelected] = useState<number | null>(null);
@@ -23,10 +31,10 @@ export default function LogPage() {
 
   useEffect(() => {
     const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
-    const existing = entries.find(e => e.date === today);
+    const existing = entries.find((e) => e.date === today);
     if (existing) {
       setTodayEntry(existing);
-      const idx = MOODS.findIndex(m => m.emoji === existing.emoji);
+      const idx = MOODS.findIndex((m) => m.emoji === existing.emoji);
       if (idx >= 0) setSelected(idx);
       setNote(existing.note || '');
     }
@@ -35,9 +43,15 @@ export default function LogPage() {
   const handleSave = () => {
     if (selected === null) return;
     const mood = MOODS[selected];
-    const entry: MoodEntry = { emoji: mood.emoji, label: mood.label, value: mood.value, note, date: today };
+    const entry: MoodEntry = {
+      emoji: mood.emoji,
+      label: mood.label,
+      value: mood.value,
+      note,
+      date: today,
+    };
     const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
-    const filtered = entries.filter(e => e.date !== today);
+    const filtered = entries.filter((e) => e.date !== today);
     filtered.push(entry);
     filtered.sort((a, b) => b.date.localeCompare(a.date));
     localStorage.setItem('mood-entries', JSON.stringify(filtered));
@@ -75,16 +89,25 @@ export default function LogPage() {
           </div>
         </fieldset>
 
-        <label className="block mb-4">
-          <span className="sr-only">Note (optional)</span>
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="Add a note (optional)..."
-            className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            rows={3}
-          />
+        <label htmlFor="note" className="block mb-2 font-medium text-gray-700">
+          Note (optional)
         </label>
+        <textarea
+          id="note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Add a note (optional)..."
+          maxLength={NOTE_MAX_LENGTH}
+          aria-describedby="note-help note-count"
+          className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-1"
+          rows={3}
+        />
+        <p id="note-help" className="text-sm text-gray-500 mb-1">
+          Optional note (max {NOTE_MAX_LENGTH} characters)
+        </p>
+        <p id="note-count" className="text-sm text-gray-500 text-right mb-4">
+          {note.length}/{NOTE_MAX_LENGTH}
+        </p>
 
         <button
           type="button"
@@ -96,7 +119,15 @@ export default function LogPage() {
           {todayEntry ? 'Update Mood' : 'Save Mood'}
         </button>
 
-        {saved && <p className="text-green-600 text-center mt-3 font-medium">Mood saved!</p>}
+        {saved && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-green-600 text-center mt-3 font-medium"
+          >
+            Mood saved!
+          </p>
+        )}
 
         <div className="mt-8">
           <h2 className="text-lg font-semibold mb-3">Recent Entries</h2>
@@ -118,7 +149,7 @@ function RecentEntries() {
 
   return (
     <div className="space-y-2">
-      {entries.map(e => (
+      {entries.map((e) => (
         <div key={e.date} className="flex items-center gap-3 bg-white p-3 rounded-lg">
           <span className="text-2xl">{e.emoji}</span>
           <div>

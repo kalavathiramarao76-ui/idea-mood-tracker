@@ -71,7 +71,7 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-2xl mx-auto">
-        <Link href="/" className="text-indigo-600 hover:underline text-sm">
+        <Link href="/" className="text-indigo-600 hover:underline text-sm" aria-label="Back to Home">
           &larr; Home
         </Link>
         <h1 className="text-3xl font-bold mt-4 mb-6">Dashboard</h1>
@@ -96,8 +96,18 @@ export default function DashboardPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white p-4 rounded-xl text-center shadow-sm">
-      <div className="text-2xl font-bold text-indigo-600">{value}</div>
+    <div
+      className="bg-white p-4 rounded-xl text-center shadow-sm"
+      role="region"
+      aria-label={`${label}: ${value}`}
+    >
+      <div
+        className="text-2xl font-bold text-indigo-600"
+        role="status"
+        aria-live="polite"
+      >
+        {value}
+      </div>
       <div className="text-sm text-gray-500">{label}</div>
     </div>
   );
@@ -118,6 +128,7 @@ function ActionCard({
     <Link
       href={href}
       className="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition block"
+      aria-label={`${title}: ${desc}`}
     >
       <div className="text-2xl mb-2">{icon}</div>
       <div className="font-semibold">{title}</div>
