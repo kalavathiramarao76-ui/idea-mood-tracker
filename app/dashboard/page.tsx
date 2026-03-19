@@ -1,39 +1,71 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 
-type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
+type MoodEntry = {
+  emoji: string;
+  label: string;
+  value: number;
+  note: string;
+  date: string;
+};
 
-export default function DashboardPage() {
+function useMoodEntries(): MoodEntry[] {
   const [entries, setEntries] = useState<MoodEntry[]>([]);
-  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
-    const data: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
-    data.sort((a, b) => b.date.localeCompare(a.date));
-    setEntries(data);
-
-    // Calculate streak
-    let s = 0;
-    const today = new Date();
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      if (data.some(e => e.date === dateStr)) s++;
-      else break;
+    const raw = localStorage.getItem('mood-entries') ?? '[]';
+    try {
+      const data: MoodEntry[] = JSON.parse(raw);
+      data.sort((a, b) => b.date.localeCompare(a.date));
+      setEntries(data);
+    } catch {
+      setEntries([]);
     }
-    setStreak(s);
   }, []);
 
-  const todayEntry = entries.find(e => e.date === new Date().toISOString().split('T')[0]);
-  const avg = entries.length > 0 ? (entries.reduce((s, e) => s + e.value, 0) / entries.length).toFixed(1) : '—';
+  return entries;
+}
+
+function calculateStreak(entries: MoodEntry[]): number {
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    if (entries.some(e => e.date === dateStr)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+export default function DashboardPage() {
+  const entries = useMoodEntries();
+
+  const streak = useMemo(() => calculateStreak(entries), [entries]);
+
+  const todayEntry = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return entries.find(e => e.date === todayStr);
+  }, [entries]);
+
+  const avg = useMemo(() => {
+    if (entries.length === 0) return '—';
+    const sum = entries.reduce((s, e) => s + e.value, 0);
+    return (sum / entries.length).toFixed(1);
+  }, [entries]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-2xl mx-auto">
-        <Link href="/" className="text-indigo-600 hover:underline text-sm">&larr; Home</Link>
+        <Link href="/" className="text-indigo-600 hover:underline text-sm">
+          &larr; Home
+        </Link>
         <h1 className="text-3xl font-bold mt-4 mb-6">Dashboard</h1>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -63,7 +95,17 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionCard({ href, icon, title, desc }: { href: string; icon: string; title: string; desc: string }) {
+function ActionCard({
+  href,
+  icon,
+  title,
+  desc,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  desc: string;
+}) {
   return (
     <Link href={href} className="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition block">
       <div className="text-2xl mb-2">{icon}</div>
