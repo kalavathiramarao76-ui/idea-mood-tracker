@@ -68,7 +68,7 @@ export default function LogPage() {
           className="w-full p-3 border border-gray-200 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           rows={3} />
 
-        <button onClick={handleSave} disabled={selected === null}
+        <button type="button" onClick={handleSave} disabled={selected === null}
           className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
           {todayEntry ? 'Update Mood' : 'Save Mood'}
         </button>
