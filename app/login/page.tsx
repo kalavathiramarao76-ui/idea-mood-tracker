@@ -4,14 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -20,17 +12,26 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError("");
+
     try {
-      const hashedPassword = await hashPassword(password);
-      const users: Record<string, string> = JSON.parse(
-        localStorage.getItem("mood-users") || "{}"
-      );
-      if (users[email] && users[email] === hashedPassword) {
-        localStorage.setItem("mood-current-user", email);
-        router.push("/log");
-      } else {
-        setError("Invalid email or password. Sign up first if you are new.");
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // ensure HttpOnly cookie is sent/received
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = (await response.json()) as { message?: string };
+        setError(errorData.message ?? "Invalid email or password.");
+        return;
       }
+
+      // Successful authentication; redirect to the main log page
+      router.push("/log");
     } catch (err) {
       console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");

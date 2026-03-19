@@ -94,22 +94,27 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+type StatCardProps = {
+  label?: string;
+  value?: string;
+};
+
+function StatCard({ label = "—", value = "—" }: StatCardProps) {
   return (
-    <div
+    <section
       className="bg-white p-4 rounded-xl text-center shadow-sm"
       role="region"
       aria-label={`${label}: ${value}`}
     >
-      <div
+      <h2 className="text-sm text-gray-500 mb-1">{label}</h2>
+      <p
         className="text-2xl font-bold text-indigo-600"
         role="status"
         aria-live="polite"
       >
         {value}
-      </div>
-      <div className="text-sm text-gray-500">{label}</div>
-    </div>
+      </p>
+    </section>
   );
 }
 

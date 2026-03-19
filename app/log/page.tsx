@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 
 const MOODS = [
-  { emoji: '😀', label: 'Great', value: 5 },
-  { emoji: '🙂', label: 'Good', value: 4 },
-  { emoji: '😐', label: 'Okay', value: 3 },
-  { emoji: '🙁', label: 'Low', value: 2 },
-  { emoji: '😢', label: 'Bad', value: 1 },
+  { emoji: "😀", label: "Great", value: 5 },
+  { emoji: "🙂", label: "Good", value: 4 },
+  { emoji: "😐", label: "Okay", value: 3 },
+  { emoji: "🙁", label: "Low", value: 2 },
+  { emoji: "😢", label: "Bad", value: 1 },
 ];
 
 type MoodEntry = {
@@ -23,20 +23,23 @@ const NOTE_MAX_LENGTH = 200;
 
 export default function LogPage() {
   const [selected, setSelected] = useState<number | null>(null);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
   const [todayEntry, setTodayEntry] = useState<MoodEntry | null>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const entries: MoodEntry[] = JSON.parse(
+      localStorage.getItem("mood-entries") || "[]"
+    );
     const existing = entries.find((e) => e.date === today);
     if (existing) {
       setTodayEntry(existing);
       const idx = MOODS.findIndex((m) => m.emoji === existing.emoji);
       if (idx >= 0) setSelected(idx);
-      setNote(existing.note || '');
+      setNote(existing.note || "");
     }
   }, [today]);
 
@@ -50,14 +53,31 @@ export default function LogPage() {
       note,
       date: today,
     };
-    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const entries: MoodEntry[] = JSON.parse(
+      localStorage.getItem("mood-entries") || "[]"
+    );
     const filtered = entries.filter((e) => e.date !== today);
     filtered.push(entry);
     filtered.sort((a, b) => b.date.localeCompare(a.date));
-    localStorage.setItem('mood-entries', JSON.stringify(filtered));
+    localStorage.setItem("mood-entries", JSON.stringify(filtered));
     setSaved(true);
     setTodayEntry(entry);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (selected === null) return;
+    let newIndex = selected;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      newIndex = (selected + 1) % MOODS.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      newIndex = (selected - 1 + MOODS.length) % MOODS.length;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    setSelected(newIndex);
+    buttonRefs.current[newIndex]?.focus();
   };
 
   return (
@@ -71,15 +91,26 @@ export default function LogPage() {
 
         <fieldset className="mb-6">
           <legend className="sr-only">Select your mood</legend>
-          <div className="flex gap-3 justify-center">
+          <div
+            role="radiogroup"
+            aria-label="Mood selection"
+            className="flex gap-3 justify-center"
+            onKeyDown={handleKeyDown}
+          >
             {MOODS.map((mood, i) => (
               <button
                 key={mood.emoji}
                 type="button"
+                ref={(el) => (buttonRefs.current[i] = el)}
+                role="radio"
+                aria-checked={selected === i}
+                tabIndex={selected === i ? 0 : -1}
                 onClick={() => setSelected(i)}
                 aria-label={mood.label}
                 className={`text-4xl p-3 rounded-xl transition ${
-                  selected === i ? 'bg-indigo-100 ring-2 ring-indigo-500 scale-110' : 'bg-white hover:bg-gray-100'
+                  selected === i
+                    ? "bg-indigo-100 ring-2 ring-indigo-500 scale-110"
+                    : "bg-white hover:bg-gray-100"
                 }`}
               >
                 {mood.emoji}
@@ -120,7 +151,7 @@ export default function LogPage() {
           aria-disabled={selected === null}
           className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          {todayEntry ? 'Update Mood' : 'Save Mood'}
+          {todayEntry ? "Update Mood" : "Save Mood"}
         </button>
 
         {saved && (
@@ -145,16 +176,22 @@ export default function LogPage() {
 function RecentEntries() {
   const [entries, setEntries] = useState<MoodEntry[]>([]);
   useEffect(() => {
-    const data: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const data: MoodEntry[] = JSON.parse(
+      localStorage.getItem("mood-entries") || "[]"
+    );
     setEntries(data.slice(0, 7));
   }, []);
 
-  if (entries.length === 0) return <p className="text-gray-400 text-sm">No entries yet.</p>;
+  if (entries.length === 0)
+    return <p className="text-gray-400 text-sm">No entries yet.</p>;
 
   return (
     <div className="space-y-2">
       {entries.map((e) => (
-        <div key={e.date} className="flex items-center gap-3 bg-white p-3 rounded-lg">
+        <div
+          key={e.date}
+          className="flex items-center gap-3 bg-white p-3 rounded-lg"
+        >
           <span className="text-2xl">{e.emoji}</span>
           <div>
             <div className="text-sm font-medium">{e.date}</div>
