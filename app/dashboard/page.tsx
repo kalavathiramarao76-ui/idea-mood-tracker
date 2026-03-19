@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 
 type MoodEntry = {
   emoji: string;
@@ -15,7 +15,7 @@ function useMoodEntries(): MoodEntry[] {
   const [entries, setEntries] = useState<MoodEntry[]>([]);
 
   useEffect(() => {
-    const raw = localStorage.getItem('mood-entries') ?? '[]';
+    const raw = localStorage.getItem("mood-entries") ?? "[]";
     try {
       const data: MoodEntry[] = JSON.parse(raw);
       data.sort((a, b) => b.date.localeCompare(a.date));
@@ -34,8 +34,8 @@ function calculateStreak(entries: MoodEntry[]): number {
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    if (entries.some(e => e.date === dateStr)) {
+    const dateStr = d.toISOString().split("T")[0];
+    if (entries.some((e) => e.date === dateStr)) {
       streak++;
     } else {
       break;
@@ -50,12 +50,12 @@ export default function DashboardPage() {
   const streak = useMemo(() => calculateStreak(entries), [entries]);
 
   const todayEntry = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return entries.find(e => e.date === todayStr);
+    const todayStr = new Date().toISOString().split("T")[0];
+    return entries.find((e) => e.date === todayStr);
   }, [entries]);
 
   const avg = useMemo(() => {
-    if (entries.length === 0) return '—';
+    if (entries.length === 0) return "—";
     const sum = entries.reduce((s, e) => s + e.value, 0);
     return (sum / entries.length).toFixed(1);
   }, [entries]);
@@ -69,8 +69,8 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mt-4 mb-6">Dashboard</h1>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Today" value={todayEntry ? todayEntry.emoji : '—'} />
-          <StatCard label="Streak" value={streak + 'd'} />
+          <StatCard label="Today" value={todayEntry ? todayEntry.emoji : "—"} />
+          <StatCard label="Streak" value={streak + "d"} />
           <StatCard label="Total" value={entries.length.toString()} />
           <StatCard label="Average" value={avg} />
         </div>
@@ -107,7 +107,10 @@ function ActionCard({
   desc: string;
 }) {
   return (
-    <Link href={href} className="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition block">
+    <Link
+      href={href}
+      className="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition block"
+    >
       <div className="text-2xl mb-2">{icon}</div>
       <div className="font-semibold">{title}</div>
       <div className="text-sm text-gray-500">{desc}</div>
