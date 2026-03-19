@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------------------------------------------------
+   Global Base Styles
+------------------------------------------------- */
+
+html,
+body {
+  @apply min-h-screen antialiased text-gray-900 bg-gray-50 dark:bg-gray-900 dark:text-gray-100;
+}
+
+/* Ensure the root element respects the safe area on mobile devices */
+#root,
+#__next {
+  @apply min-h-full flex flex-col;
+}
+
+/* Smooth scrolling for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Remove default margin/padding from common elements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+dl,
+figure,
+blockquote,
+fieldset,
+legend {
+  @apply m-0 p-0;
+}
+
+/* List styles */
+ul,
+ol {
+  @apply list-none;
+}
+
+/* Links */
+a {
+  @apply text-primary-600 hover:text-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-colors;
+}
+
+/* Images */
+img,
+picture,
+svg,
+canvas,
+video {
+  @apply block max-w-full h-auto;
+}
+
+/* Form elements */
+input,
+button,
+textarea,
+select {
+  @apply font-inherit text-base;
+}
+
+/* Remove default button styles */
+button {
+  @apply bg-transparent border-none p-0 cursor-pointer;
+}
+
+/* Focus-visible outline for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-primary-500;
+}
+
+/* -------------------------------------------------
+   Custom Utility Classes
+------------------------------------------------- */
+
+/* Primary color palette (adjust in tailwind.config.js if needed) */
+@layer utilities {
+  .text-primary-600 {
+    @apply text-indigo-600 dark:text-indigo-400;
+  }
+  .text-primary-500 {
+    @apply text-indigo-500 dark:text-indigo-300;
+  }
+  .bg-primary-600 {
+    @apply bg-indigo-600 dark:bg-indigo-500;
+  }
+  .bg-primary-500 {
+    @apply bg-indigo-500 dark:bg-indigo-400;
+  }
+}
+
+/* Container max‑width */
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Card component */
+.card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+}
+
+/* Emoji button */
+.emoji-btn {
+  @apply text-2xl p-2 rounded transition-transform duration-200 ease-out;
+}
+.emoji-btn:hover,
+.emoji-btn:focus-visible {
+  @apply scale-110 bg-gray-100 dark:bg-gray-700;
+}
+
+/* -------------------------------------------------
+   Responsive Typography
+------------------------------------------------- */
+
+@layer base {
+  h1 {
+    @apply text-3xl sm:text-4xl font-bold tracking-tight;
+  }
+  h2 {
+    @apply text-2xl sm:text-3xl font-semibold tracking-tight;
+  }
+  h3 {
+    @apply text-xl sm:text-2xl font-medium;
+  }
+  p {
+    @apply text-base leading-relaxed;
+  }
+}
+
+/* -------------------------------------------------
+   Dark Mode Support
+------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
