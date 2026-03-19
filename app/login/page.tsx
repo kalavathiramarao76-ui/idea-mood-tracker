@@ -49,7 +49,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
+        <form
+          className="mt-8 space-y-6"
+          onSubmit={handleSubmit}
+          noValidate
+          aria-busy={loading}
+        >
           <div className="-space-y-px rounded-md shadow-sm">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -88,10 +93,19 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-2 text-sm text-red-600">
+            <div
+              className="rounded-md bg-red-50 p-2 text-sm text-red-600"
+              role="alert"
+              aria-live="assertive"
+            >
               {error}
             </div>
           )}
+
+          {/* ARIA live region for loading state */}
+          <div role="status" aria-live="polite" className="sr-only">
+            {loading ? 'Signing in...' : null}
+          </div>
 
           <div>
             <button

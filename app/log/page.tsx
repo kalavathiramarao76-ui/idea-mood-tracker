@@ -12,7 +12,17 @@ type MoodLog = {
   created_at: string;
 };
 
-const EMOJIS = ["😀", "🙂", "😐", "🙁", "😢", "🤢", "😡"];
+const EMOJIS = ["😀", "🙂", "😐", "🙁", "😢", "🤢", "😡"] as const;
+
+const EMOJI_LABELS: Record<(typeof EMOJIS)[number], string> = {
+  "😀": "Very Happy",
+  "🙂": "Happy",
+  "😐": "Neutral",
+  "🙁": "Sad",
+  "😢": "Very Sad",
+  "🤢": "Nauseated",
+  "😡": "Angry",
+};
 
 export default function MoodLogPage() {
   const router = useRouter();
@@ -90,12 +100,14 @@ export default function MoodLogPage() {
                   type="button"
                   key={emoji}
                   onClick={() => setSelectedEmoji(emoji)}
+                  aria-pressed={selectedEmoji === emoji}
+                  aria-label={EMOJI_LABELS[emoji] ?? "Mood"}
                   className={`
                     flex h-12 w-12 items-center justify-center rounded-lg border
                     ${selectedEmoji === emoji ? "border-blue-500 bg-blue-50" : "border-gray-300"}
                     text-2xl transition-colors hover:border-blue-400
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                   `}
-                  aria-pressed={selectedEmoji === emoji}
                 >
                   {emoji}
                 </button>
@@ -138,7 +150,7 @@ export default function MoodLogPage() {
               disabled={!selectedEmoji || loading}
               className={`
                 inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium
-                text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500
+                text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                 disabled:opacity-50 disabled:hover:bg-blue-600
               `}
             >

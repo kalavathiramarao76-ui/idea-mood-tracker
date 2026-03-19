@@ -1,12 +1,37 @@
+import React, { Component, ReactNode, Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Database } from "@/lib/database.types";
 import { cookies } from "next/headers";
-import { Suspense } from "react";
 import { FaSmile, FaChartLine, FaLightbulb } from "react-icons/fa";
 
 type Props = {};
+
+class ErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 export default async function DashboardPage({}: Props) {
   const supabase = createServerComponentClient<Database>({ cookies });
@@ -25,7 +50,16 @@ export default async function DashboardPage({}: Props) {
       </h1>
 
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent userId={session.user.id} />
+        <ErrorBoundary
+          fallback={
+            <div className="text-red-600">
+              Something went wrong while loading your dashboard. Please try
+              again later.
+            </div>
+          }
+        >
+          <DashboardContent userId={session.user.id} />
+        </ErrorBoundary>
       </Suspense>
     </main>
   );
@@ -56,9 +90,7 @@ async function DashboardContent({ userId }: { userId: string }) {
   const todayMood = recentMoods.find((m) => {
     const today = new Date();
     const created = new Date(m.created_at);
-    return (
-      today.toDateString() === created.toDateString()
-    );
+    return today.toDateString() === created.toDateString();
   });
 
   return (
