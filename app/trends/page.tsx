@@ -1,168 +1,88 @@
-import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/utils/supabaseClient";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
-import { format, subDays, subMonths, startOfDay } from "date-fns";
+"use client";
 
-type MoodEntry = {
-  id: string;
-  user_id: string;
-  mood: number; // 1 (worst) - 5 (best)
-  note?: string | null;
-  created_at: string; // ISO string
-};
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type TimeRange = "7d" | "30d" | "90d" | "all";
-
-const timeRangeOptions: Record<TimeRange, string> = {
-  "7d": "Last 7 Days",
-  "30d": "Last 30 Days",
-  "90d": "Last 90 Days",
-  all: "All Time",
-};
+type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
 
 export default function TrendsPage() {
-  const [range, setRange] = useState<TimeRange>("30d");
-  const [data, setData] = useState<MoodEntry[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMoodData = useCallback(async (selectedRange: TimeRange) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      let query = supabase
-        .from<MoodEntry>("mood_entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
-
-      if (selectedRange !== "all") {
-        const now = new Date();
-        let startDate: Date;
-        if (selectedRange === "7d") startDate = subDays(now, 7);
-        else if (selectedRange === "30d") startDate = subDays(now, 30);
-        else startDate = subDays(now, 90); // "90d"
-
-        query = query.gte("created_at", startOfDay(startDate).toISOString());
-      }
-
-      const { data: entries, error: fetchError } = await query;
-
-      if (fetchError) throw fetchError;
-      setData(entries ?? []);
-    } catch (e: any) {
-      console.error(e);
-      setError(e.message ?? "Failed to load mood data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  const [range, setRange] = useState<'7' | '30' | '90'>('30');
 
   useEffect(() => {
-    fetchMoodData(range);
-  }, [range, fetchMoodData]);
+    const data: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    data.sort((a, b) => a.date.localeCompare(b.date));
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - parseInt(range));
+    const filtered = data.filter(e => new Date(e.date) >= cutoff);
+    setEntries(filtered);
+  }, [range]);
 
-  const chartData = data.map((entry) => ({
-    date: format(new Date(entry.created_at), "MMM d"),
-    mood: entry.mood,
-  }));
+  const chartData = entries.map(e => ({ date: e.date.slice(5), mood: e.value, emoji: e.emoji }));
 
   return (
-    <section className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4">
-          Mood Trends
-        </h1>
+    <main className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-3xl mx-auto">
+        <Link href="/" className="text-indigo-600 hover:underline text-sm">&larr; Home</Link>
+        <h1 className="text-3xl font-bold mt-4 mb-6">Mood Trends</h1>
 
-        {/* Time range selector */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {Object.entries(timeRangeOptions).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setRange(key as TimeRange)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                range === key
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-              }`}
-            >
-              {label}
+        <div className="flex gap-2 mb-6">
+          {(['7','30','90'] as const).map(r => (
+            <button key={r} onClick={() => setRange(r)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${range === r ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
+              {r} days
             </button>
           ))}
         </div>
 
-        {/* Content */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <svg
-              className="animate-spin h-8 w-8 text-indigo-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              ></path>
-            </svg>
+        {entries.length === 0 ? (
+          <div className="bg-white p-8 rounded-xl text-center text-gray-400">
+            <p>No mood data yet. <Link href="/log" className="text-indigo-600 hover:underline">Log your first mood</Link></p>
           </div>
-        ) : error ? (
-          <p className="text-red-600">{error}</p>
-        ) : chartData.length === 0 ? (
-          <p className="text-gray-600">No mood entries found for the selected period.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-              <YAxis
-                domain={[1, 5]}
-                ticks={[1, 2, 3, 4, 5]}
-                tickFormatter={(value) => `⭐ ${value}`}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb" }}
-                labelFormatter={(label) => `Date: ${label}`}
-                formatter={(value: number) => [`Mood: ${value}`, ""]} 
-              />
-              <Line
-                type="monotone"
-                dataKey="mood"
-                stroke="#6366f1"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" fontSize={12} />
+                <YAxis domain={[1, 5]} ticks={[1,2,3,4,5]} fontSize={12} />
+                <Tooltip formatter={(val: number) => {
+                  const labels = ['','Bad','Low','Okay','Good','Great'];
+                  return labels[val] || val;
+                }} />
+                <Line type="monotone" dataKey="mood" stroke="#6366f1" strokeWidth={2} dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
+
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-3">Summary</h2>
+          {entries.length > 0 && (
+            <div className="grid grid-cols-3 gap-4">
+              <Stat label="Entries" value={entries.length.toString()} />
+              <Stat label="Average" value={(entries.reduce((s,e) => s+e.value, 0) / entries.length).toFixed(1)} />
+              <Stat label="Most Common" value={getMostCommon(entries)} />
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </main>
   );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white p-4 rounded-lg text-center">
+      <div className="text-2xl font-bold text-indigo-600">{value}</div>
+      <div className="text-sm text-gray-500">{label}</div>
+    </div>
+  );
+}
+
+function getMostCommon(entries: MoodEntry[]): string {
+  const counts: Record<string, number> = {};
+  entries.forEach(e => { counts[e.emoji] = (counts[e.emoji] || 0) + 1; });
+  return Object.entries(counts).sort((a,b) => b[1]-a[1])[0]?.[0] || '-';
 }

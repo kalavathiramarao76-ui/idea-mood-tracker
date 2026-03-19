@@ -1,196 +1,84 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import Image from 'next/image';
+"use client";
+
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
+import Link from 'next/link';
 
-type MoodEntry = {
-  mood: string;
-  created_at: string;
+type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
+
+const TIPS_DB: Record<string, string[]> = {
+  low: [
+    'Take a 10-minute walk outside — nature and movement boost mood significantly.',
+    'Try the 5-4-3-2-1 grounding exercise: name 5 things you see, 4 you hear, 3 you touch, 2 you smell, 1 you taste.',
+    'Reach out to someone you trust — connection is a powerful mood lifter.',
+    'Write down 3 things you are grateful for, no matter how small.',
+    'Give yourself permission to rest. Its okay to have a slow day.',
+  ],
+  neutral: [
+    'Try something new today — even a small change in routine can spark positive feelings.',
+    'Set one small, achievable goal for today and celebrate when you finish it.',
+    'Spend 5 minutes stretching or doing deep breathing.',
+    'Listen to a playlist that makes you feel energized.',
+    'Drink a glass of water and eat something nourishing.',
+  ],
+  high: [
+    'Channel this positive energy into a creative project or hobby!',
+    'Share your good mood with someone — compliment a friend or colleague.',
+    'Journal about what made today great so you can revisit it later.',
+    'Use this momentum to tackle something youve been putting off.',
+    'Practice mindfulness to fully savor this feeling.',
+  ],
 };
-
-type TipsResponse = {
-  tips: string;
-  error?: string;
-};
-
-async function fetchUser() {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    redirect('/login');
-  }
-
-  return user;
-}
-
-async function fetchRecentMoods(userId: string, limit = 30): Promise<MoodEntry[]> {
-  const { data, error } = await supabase
-    .from('moods')
-    .select('mood, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    console.error('Error fetching moods:', error);
-    return [];
-  }
-
-  return data as MoodEntry[];
-}
-
-async function generateTips(moods: MoodEntry[]): Promise<TipsResponse> {
-  if (!process.env.OPENAI_API_KEY) {
-    return { tips: '', error: 'OpenAI API key not configured.' };
-  }
-
-  const prompt = `
-You are a wellness coach. Based on the following mood entries (most recent first), provide three concise, actionable wellness tips tailored to the user's recent emotional pattern. Keep the tone supportive and friendly.
-
-Mood entries:
-${moods
-    .map(
-      (m) =>
-        `- ${new Date(m.created_at).toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-        })}: ${m.mood}`
-    )
-    .join('\n')}
-`;
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        temperature: 0.7,
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('OpenAI error:', err);
-      return { tips: '', error: 'Failed to generate tips.' };
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content?.trim() ?? '';
-    return { tips: content };
-  } catch (e) {
-    console.error('OpenAI request failed:', e);
-    return { tips: '', error: 'Unexpected error while generating tips.' };
-  }
-}
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function TipsPage() {
-  const [tips, setTips] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [tips, setTips] = useState<string[]>([]);
+  const [moodCategory, setMoodCategory] = useState('');
+  const [avgMood, setAvgMood] = useState(0);
 
   useEffect(() => {
-    async function loadTips() {
-      setLoading(true);
-      setError(null);
-      try {
-        const user = await fetchUser();
-        const moods = await fetchRecentMoods(user.id);
-        const { tips, error: genError } = await generateTips(moods);
-        if (genError) {
-          setError(genError);
-        } else {
-          setTips(tips);
-        }
-      } catch (e) {
-        console.error(e);
-        setError('Unable to load tips.');
-      } finally {
-        setLoading(false);
-      }
+    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const recent = entries.slice(0, 7);
+    if (recent.length === 0) {
+      setTips(['Start logging your moods to get personalized wellness tips!']);
+      return;
     }
+    const avg = recent.reduce((s, e) => s + e.value, 0) / recent.length;
+    setAvgMood(avg);
+    let category: string;
+    if (avg <= 2.5) { category = 'low'; setMoodCategory('could use a boost'); }
+    else if (avg <= 3.5) { category = 'neutral'; setMoodCategory('steady'); }
+    else { category = 'high'; setMoodCategory('great'); }
 
-    loadTips();
+    const pool = TIPS_DB[category];
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    setTips(shuffled.slice(0, 3));
   }, []);
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await fetchUser();
-      const moods = await fetchRecentMoods(user.id);
-      const { tips, error: genError } = await generateTips(moods);
-      if (genError) {
-        setError(genError);
-      } else {
-        setTips(tips);
-      }
-    } catch (e) {
-      console.error(e);
-      setError('Unable to refresh tips.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <section className="max-w-3xl mx-auto p-4 md:p-8">
-      <h1 className="text-3xl font-bold text-center mb-6">Your Personalized Wellness Tips</h1>
+    <main className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-lg mx-auto">
+        <Link href="/" className="text-indigo-600 hover:underline text-sm">&larr; Home</Link>
+        <h1 className="text-3xl font-bold mt-4 mb-2">Wellness Tips</h1>
+        {moodCategory && (
+          <p className="text-gray-500 mb-6">
+            Your recent mood average is <span className="font-semibold text-indigo-600">{avgMood.toFixed(1)}/5</span> ({moodCategory}).
+          </p>
+        )}
 
-      {loading && (
-        <div className="flex justify-center items-center py-12">
-          <svg
-            className="animate-spin h-8 w-8 text-primary-600"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v8H4z"
-            ></path>
-          </svg>
+        <div className="space-y-4">
+          {tips.map((tip, i) => (
+            <div key={i} className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-indigo-500">
+              <p className="text-gray-700">{tip}</p>
+            </div>
+          ))}
         </div>
-      )}
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && (
-        <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-          <p className="text-lg leading-relaxed whitespace-pre-line">{tips}</p>
-          <button
-            onClick={handleRefresh}
-            className="mt-4 w-full md:w-auto inline-flex items-center justify-center px-5 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-          >
+        <div className="mt-8 text-center">
+          <button onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition font-medium">
             Refresh Tips
           </button>
         </div>
-      )}
-    </section>
+      </div>
+    </main>
   );
 }

@@ -1,186 +1,109 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
-import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
-type MoodLog = {
-  id: string;
-  user_id: string;
-  mood: string;
-  notes: string | null;
-  created_at: string;
-};
+const MOODS = [
+  { emoji: '😀', label: 'Great', value: 5 },
+  { emoji: '🙂', label: 'Good', value: 4 },
+  { emoji: '😐', label: 'Okay', value: 3 },
+  { emoji: '🙁', label: 'Low', value: 2 },
+  { emoji: '😢', label: 'Bad', value: 1 },
+];
 
-const EMOJIS = ["😀", "🙂", "😐", "🙁", "😢", "🤢", "😡"] as const;
+type MoodEntry = { emoji: string; label: string; value: number; note: string; date: string };
 
-const EMOJI_LABELS: Record<(typeof EMOJIS)[number], string> = {
-  "😀": "Very Happy",
-  "🙂": "Happy",
-  "😐": "Neutral",
-  "🙁": "Sad",
-  "😢": "Very Sad",
-  "🤢": "Nauseated",
-  "😡": "Angry",
-};
+export default function LogPage() {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [note, setNote] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [todayEntry, setTodayEntry] = useState<MoodEntry | null>(null);
 
-export default function MoodLogPage() {
-  const router = useRouter();
+  const today = new Date().toISOString().split('T')[0];
 
-  const [userId, setUserId] = useState<string | null>(null);
-  const [selectedEmoji, setSelectedEmoji] = useState<string>("");
-  const [notes, setNotes] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
-
-  // Fetch authenticated user
   useEffect(() => {
-    const fetchUser = async () => {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        router.replace("/login");
-        return;
-      }
-      setUserId(user.id);
-    };
-    fetchUser();
-  }, [router]);
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedEmoji) return;
-    setLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const { error: insertError } = await supabase
-        .from<MoodLog>("mood_logs")
-        .insert({
-          user_id: userId,
-          mood: selectedEmoji,
-          notes: notes.trim() ? notes.trim() : null,
-        });
-
-      if (insertError) throw insertError;
-
-      setSuccess("Mood logged successfully!");
-      setSelectedEmoji("");
-      setNotes("");
-      // Optionally redirect to dashboard after a short delay
-      setTimeout(() => router.push("/dashboard"), 1500);
-    } catch (err: any) {
-      setError(err.message ?? "Failed to log mood.");
-    } finally {
-      setLoading(false);
+    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const existing = entries.find(e => e.date === today);
+    if (existing) {
+      setTodayEntry(existing);
+      const idx = MOODS.findIndex(m => m.emoji === existing.emoji);
+      if (idx >= 0) setSelected(idx);
+      setNote(existing.note || '');
     }
+  }, [today]);
+
+  const handleSave = () => {
+    if (selected === null) return;
+    const mood = MOODS[selected];
+    const entry: MoodEntry = { emoji: mood.emoji, label: mood.label, value: mood.value, note, date: today };
+    const entries: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    const filtered = entries.filter(e => e.date !== today);
+    filtered.push(entry);
+    filtered.sort((a, b) => b.date.localeCompare(a.date));
+    localStorage.setItem('mood-entries', JSON.stringify(filtered));
+    setSaved(true);
+    setTodayEntry(entry);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
-        <h1 className="mb-4 text-center text-2xl font-semibold text-gray-800">
-          Log Your Mood
-        </h1>
+    <main className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-lg mx-auto">
+        <Link href="/" className="text-indigo-600 hover:underline text-sm">&larr; Home</Link>
+        <h1 className="text-3xl font-bold mt-4 mb-6">Log Your Mood</h1>
+        <p className="text-gray-500 mb-4">How are you feeling today? ({today})</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Emoji selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Choose an emoji
-            </label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {EMOJIS.map((emoji) => (
-                <button
-                  type="button"
-                  key={emoji}
-                  onClick={() => setSelectedEmoji(emoji)}
-                  aria-pressed={selectedEmoji === emoji}
-                  aria-label={EMOJI_LABELS[emoji] ?? "Mood"}
-                  className={`
-                    flex h-12 w-12 items-center justify-center rounded-lg border
-                    ${selectedEmoji === emoji ? "border-blue-500 bg-blue-50" : "border-gray-300"}
-                    text-2xl transition-colors hover:border-blue-400
-                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-                  `}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label
-              htmlFor="notes"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Optional notes
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              placeholder="How are you feeling today?"
-            />
-          </div>
-
-          {/* Feedback messages */}
-          {error && (
-            <p className="rounded bg-red-100 p-2 text-sm text-red-700">{error}</p>
-          )}
-          {success && (
-            <p className="rounded bg-green-100 p-2 text-sm text-green-700">
-              {success}
-            </p>
-          )}
-
-          {/* Submit button */}
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={!selectedEmoji || loading}
-              className={`
-                inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium
-                text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-                disabled:opacity-50 disabled:hover:bg-blue-600
-              `}
-            >
-              {loading ? (
-                <svg
-                  className="mr-2 h-5 w-5 animate-spin text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  />
-                </svg>
-              ) : null}
-              {loading ? "Saving…" : "Save Mood"}
+        <div className="flex gap-3 justify-center mb-6">
+          {MOODS.map((mood, i) => (
+            <button key={mood.emoji} onClick={() => setSelected(i)}
+              className={`text-4xl p-3 rounded-xl transition ${selected === i ? 'bg-indigo-100 ring-2 ring-indigo-500 scale-110' : 'bg-white hover:bg-gray-100'}`}>
+              {mood.emoji}
+              <div className="text-xs text-gray-500 mt-1">{mood.label}</div>
             </button>
-          </div>
-        </form>
+          ))}
+        </div>
+
+        <textarea value={note} onChange={e => setNote(e.target.value)}
+          placeholder="Add a note (optional)..."
+          className="w-full p-3 border border-gray-200 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          rows={3} />
+
+        <button onClick={handleSave} disabled={selected === null}
+          className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+          {todayEntry ? 'Update Mood' : 'Save Mood'}
+        </button>
+
+        {saved && <p className="text-green-600 text-center mt-3 font-medium">Mood saved!</p>}
+
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-3">Recent Entries</h2>
+          <RecentEntries />
+        </div>
       </div>
     </main>
+  );
+}
+
+function RecentEntries() {
+  const [entries, setEntries] = useState<MoodEntry[]>([]);
+  useEffect(() => {
+    const data: MoodEntry[] = JSON.parse(localStorage.getItem('mood-entries') || '[]');
+    setEntries(data.slice(0, 7));
+  }, []);
+
+  if (entries.length === 0) return <p className="text-gray-400 text-sm">No entries yet.</p>;
+
+  return (
+    <div className="space-y-2">
+      {entries.map(e => (
+        <div key={e.date} className="flex items-center gap-3 bg-white p-3 rounded-lg">
+          <span className="text-2xl">{e.emoji}</span>
+          <div>
+            <div className="text-sm font-medium">{e.date}</div>
+            {e.note && <div className="text-xs text-gray-500">{e.note}</div>}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
